@@ -1,9 +1,4 @@
--- ЗАЩИТА ОТ ПОВТОРНОГО ЗАПУСКА
-if _G.GuiHiderLoaded then 
-    return 
-end
-_G.GuiHiderLoaded = true
-
+-- Убрали все лишние проверки загрузки и античита
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -11,49 +6,31 @@ local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local hideModeActive = true
 local targetGuis = {["MainHUD"] = true, ["Map"] = true, ["TESTING"] = true}
 
--- Флаг, чтобы избежать рекурсии (краша)
-local isUpdating = false
-
-local function setGuiEnabled(gui, state)
-    if isUpdating then return end -- Если мы уже в процессе смены, выходим
-    isUpdating = true
-    gui.Enabled = state
-    isUpdating = false
-end
-
-local function setupGui(gui)
-    if targetGuis[gui.Name] and gui:IsA("ScreenGui") then
-        -- Устанавливаем начальное состояние
-        setGuiEnabled(gui, not hideModeActive)
-
-        -- Безопасное отслеживание изменений
-        gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-            if isUpdating then return end
-            if hideModeActive and gui.Enabled == true then
-                setGuiEnabled(gui, false)
-            end
-        end)
+-- Функция скрытия/показа
+local function updateState()
+    for _, gui in pairs(PlayerGui:GetChildren()) do
+        if targetGuis[gui.Name] and gui:IsA("ScreenGui") then
+            gui.Enabled = not hideModeActive
+        end
     end
 end
 
--- Слежка за новыми и текущими GUI
-for _, child in pairs(PlayerGui:GetChildren()) do
-    setupGui(child)
-end
-
-PlayerGui.ChildAdded:Connect(setupGui)
+-- Обработка новых меню (например, после выхода из вертолета)
+PlayerGui.ChildAdded:Connect(function(child)
+    if targetGuis[child.Name] and child:IsA("ScreenGui") then
+        task.wait(0.1) -- Короткая пауза, чтобы игра успела "поставить" меню
+        child.Enabled = not hideModeActive
+    end
+end)
 
 -- Переключение на PageUp
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.PageUp then
         hideModeActive = not hideModeActive
-        
-        -- Массовое обновление без краша
-        for _, child in pairs(PlayerGui:GetChildren()) do
-            if targetGuis[child.Name] and child:IsA("ScreenGui") then
-                setGuiEnabled(child, not hideModeActive)
-            end
-        end
+        updateState()
     end
 end)
+
+-- Первый запуск сразу после выполнения скрипта
+updateState()
