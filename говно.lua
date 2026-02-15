@@ -55,64 +55,28 @@ local function cleanupConnections()
 end
 
 -- ════════════════════════════════════════════════════════════════
--- СОСТОЯНИЕ СКРИПТА
+-- ЛОКАЛЬНОЕ СОСТОЯНИЕ (для циклов)
 -- ════════════════════════════════════════════════════════════════
-local State = {
-    -- Система
-    _running = true,
-    
-    -- Chat
-    chatEnabled = false,
-    chatMessage = "workby!88!",
-    originalDisplayName = player.DisplayName ~= "" and player.DisplayName or player.Name,
-    
-    -- Name Changers
-    usernameChangerEnabled = false,
-    displayNameChangerEnabled = false,
-    rankChangerEnabled = false,
-    gameUsername = "",
-    gameDisplayName = "",
-    gameRank = "",
-    
-    -- Avatar
-    avatarUsername = "",
-    avatarAutoApply = true,
-    savedAvatarUsername = "",
-    
-    -- Rainbow
-    rainbowEnabled = false,
-    rainbowSpeed = 1,
-    rainbowCustomColor = Color3.fromRGB(255, 80, 80),
-    rainbowUseCustomColor = false,
-    
-    -- UI Toggles
-    uiHidden = false,
-    killfeedHidden = false,
-    globalKillfeedEnabled = true,
-    hpBarEnabled = false,
-    hpBarColor = Color3.fromRGB(0, 255, 0),
-    
-    -- Keybinds
-    menuKeybind = "Insert",
-    
-    -- Misc / Time Control
-    freezeTime = false,
-    customTime = 12,
-    
-    -- ACS
-    acsAnimPatchApplied = false,
-    acsAmmoPatchApplied = false,
-    acsMedPatchApplied = false,
-    acsHitSoundEnabled = false,
-    acsKillSoundEnabled = false,
-    acsShotgunApplied = false,
-    
-    -- Spread + Recoil
-    spreadRecoilGun = "M40 Sniper",
-    
-    -- Other
-    fastUseEnabled = false,
-    hideParachuteEnabled = false,
+local Settings = {
+    FreezeTime = false,
+    CustomTime = 12,
+    RainbowEnabled = false,
+    RainbowSpeed = 1,
+    RainbowUseCustomColor = false,
+    RainbowCustomColor = Color3.fromRGB(255, 80, 80),
+    HideParachuteEnabled = false,
+    HPBarEnabled = false,
+    HPBarColor = Color3.fromRGB(0, 255, 0),
+    GlobalKillfeedEnabled = true,
+    HideIngameUI = false,
+    HideKillfeed = false,
+    GameDisplayName = "",
+    GameUsername = "",
+    GameRank = "",
+    ChatEnabled = false,
+    ChatMessage = "workby!88!",
+    AvatarUsername = "",
+    AvatarAutoApply = false,
 }
 
 -- ════════════════════════════════════════════════════════════════
@@ -223,11 +187,11 @@ local function changeNameTag(displayName, username, rank)
         local displayLabel = nameTag:FindFirstChild("DisplayName")
         local rankLabel = nameTag:FindFirstChild("Rank")
         
-        if usernameLabel and usernameLabel:IsA("TextLabel") and State.displayNameChangerEnabled and displayName ~= "" then
+        if usernameLabel and usernameLabel:IsA("TextLabel") and displayName ~= "" then
             usernameLabel.Text = displayName
         end
         
-        if displayLabel and displayLabel:IsA("TextLabel") and State.usernameChangerEnabled and username ~= "" then
+        if displayLabel and displayLabel:IsA("TextLabel") and username ~= "" then
             local formattedUsername = username
             if not formattedUsername:match("^@") then
                 formattedUsername = "@" .. formattedUsername
@@ -235,20 +199,20 @@ local function changeNameTag(displayName, username, rank)
             displayLabel.Text = formattedUsername
         end
         
-        if rankLabel and rankLabel:IsA("TextLabel") and State.rankChangerEnabled then
+        if rankLabel and rankLabel:IsA("TextLabel") then
             rankLabel.Text = rank or ""
         end
     end)
 end
 
 -- Применение всех настроек имени
-local function applyAllNameChanges()
+local function applyAllNameChanges(displayName, username, rank)
     task.wait(0.5)
-    changeNameTag(State.gameDisplayName, State.gameUsername, State.gameRank)
+    changeNameTag(displayName, username, rank)
 end
 
 -- Скрытие UI элементов
-local function toggleGameUI()
+local function toggleGameUI(hidden)
     pcall(function()
         local ui = player.PlayerGui:WaitForChild("UI", 2):WaitForChild("Container", 2):WaitForChild("HUD", 2)
         if not ui then return end
@@ -257,18 +221,18 @@ local function toggleGameUI()
         local menu = ui:FindFirstChild("Menu")
         local topbar = ui:FindFirstChild("Topbar")
         
-        if map then map.Visible = not State.uiHidden end
-        if menu then menu.Visible = not State.uiHidden end
-        if topbar then topbar.Visible = not State.uiHidden end
+        if map then map.Visible = not hidden end
+        if menu then menu.Visible = not hidden end
+        if topbar then topbar.Visible = not hidden end
     end)
 end
 
 -- Скрытие killfeed
-local function toggleKillfeed()
+local function toggleKillfeed(hidden)
     pcall(function()
         local killfeed = player.PlayerGui:WaitForChild("UI", 2):WaitForChild("Container", 2):WaitForChild("HUD", 2):WaitForChild("Killfeed", 2)
         if killfeed then
-            killfeed.Visible = not State.killfeedHidden
+            killfeed.Visible = not hidden
         end
     end)
 end
@@ -382,7 +346,7 @@ Window:Tag({
 
 -- ════════════════════════════════════════════════════════════════
 -- ВКЛАДКА: CHAT
--- ════════════════════════════════════════════════════════��═══════
+-- ════════════════════════════════════════════════════════════════
 local ChatTab = Window:Tab({
     Title = "Chat",
     Icon = "lucide:message-square",
@@ -399,10 +363,10 @@ ChatTab:Input({
     Flag = "ChatMessage",
     Title = "Сообщение в чат",
     Icon = "lucide:message-circle",
-    Value = State.chatMessage,
+    Value = "workby!88!",
     Placeholder = "Введи сообщение...",
     Callback = function(value)
-        State.chatMessage = value
+        Settings.ChatMessage = value
     end
 })
 
@@ -412,11 +376,8 @@ ChatTab:Input({
     Flag = "OriginalDisplayName",
     Title = "Твой родной DisplayName",
     Icon = "lucide:user",
-    Value = State.originalDisplayName,
+    Value = player.DisplayName ~= "" and player.DisplayName or player.Name,
     Placeholder = "DisplayName...",
-    Callback = function(value)
-        State.originalDisplayName = value
-    end
 })
 
 ChatTab:Space()
@@ -425,9 +386,9 @@ ChatTab:Toggle({
     Flag = "ChatEnabled",
     Title = "Включить чат при убийстве",
     Desc = "Автоматически отправляет сообщение когда ты убиваешь",
-    Value = State.chatEnabled,
+    Value = false,
     Callback = function(value)
-        State.chatEnabled = value
+        Settings.ChatEnabled = value
     end
 })
 
@@ -439,10 +400,10 @@ ChatTab:Button({
     Justify = "Center",
     Color = Color3.fromHex("#10C550"),
     Callback = function()
-        safeSend(State.chatMessage)
+        safeSend(Settings.ChatMessage)
         WindUI:Notify({
             Title = "Тест отправки",
-            Content = "Сообщение отправлено: " .. State.chatMessage,
+            Content = "Сообщение отправлено: " .. Settings.ChatMessage,
             Icon = "lucide:check",
         })
     end
@@ -458,7 +419,6 @@ local NameTab = Window:Tab({
     Border = true,
 })
 
--- Username Section
 local UsernameSection = NameTab:Section({
     Title = "Username (@username)",
     Box = true,
@@ -470,13 +430,10 @@ UsernameSection:Input({
     Flag = "GameUsername",
     Title = "Username",
     Icon = "lucide:at-sign",
-    Value = State.gameUsername,
+    Value = "",
     Placeholder = "Без @...",
     Callback = function(value)
-        State.gameUsername = value
-        if State.usernameChangerEnabled then
-            applyAllNameChanges()
-        end
+        Settings.GameUsername = value
     end
 })
 
@@ -485,16 +442,11 @@ UsernameSection:Space()
 UsernameSection:Toggle({
     Flag = "UsernameChangerEnabled",
     Title = "Включить Username Changer",
-    Value = State.usernameChangerEnabled,
-    Callback = function(value)
-        State.usernameChangerEnabled = value
-        applyAllNameChanges()
-    end
+    Value = false,
 })
 
 NameTab:Space()
 
--- DisplayName Section
 local DisplayNameSection = NameTab:Section({
     Title = "DisplayName (главное имя)",
     Box = true,
@@ -506,13 +458,10 @@ DisplayNameSection:Input({
     Flag = "GameDisplayName",
     Title = "DisplayName",
     Icon = "lucide:user",
-    Value = State.gameDisplayName,
+    Value = "",
     Placeholder = "Новый DisplayName...",
     Callback = function(value)
-        State.gameDisplayName = value
-        if State.displayNameChangerEnabled then
-            applyAllNameChanges()
-        end
+        Settings.GameDisplayName = value
     end
 })
 
@@ -521,16 +470,11 @@ DisplayNameSection:Space()
 DisplayNameSection:Toggle({
     Flag = "DisplayNameChangerEnabled",
     Title = "Включить DisplayName Changer",
-    Value = State.displayNameChangerEnabled,
-    Callback = function(value)
-        State.displayNameChangerEnabled = value
-        applyAllNameChanges()
-    end
+    Value = false,
 })
 
 NameTab:Space()
 
--- Rank Section
 local RankSection = NameTab:Section({
     Title = "Rank (звание/статус)",
     Box = true,
@@ -542,13 +486,10 @@ RankSection:Input({
     Flag = "GameRank",
     Title = "Rank",
     Icon = "lucide:crown",
-    Value = State.gameRank,
+    Value = "",
     Placeholder = "Новый Rank...",
     Callback = function(value)
-        State.gameRank = value
-        if State.rankChangerEnabled then
-            applyAllNameChanges()
-        end
+        Settings.GameRank = value
     end
 })
 
@@ -557,23 +498,18 @@ RankSection:Space()
 RankSection:Toggle({
     Flag = "RankChangerEnabled",
     Title = "Включить Rank Changer",
-    Value = State.rankChangerEnabled,
-    Callback = function(value)
-        State.rankChangerEnabled = value
-        applyAllNameChanges()
-    end
+    Value = false,
 })
 
 NameTab:Space()
 
--- Apply Button
 NameTab:Button({
     Title = "Применить все изменения имени",
     Icon = "lucide:check",
     Justify = "Center",
     Color = Color3.fromHex("#7775F2"),
     Callback = function()
-        applyAllNameChanges()
+        applyAllNameChanges(Settings.GameDisplayName, Settings.GameUsername, Settings.GameRank)
         WindUI:Notify({
             Title = "Имя обновлено",
             Content = "Все изменения применены!",
@@ -584,7 +520,6 @@ NameTab:Button({
 
 NameTab:Space()
 
--- Custom Color Section
 local CustomColorSection = NameTab:Section({
     Title = "Кастомный цвет имени",
     Box = true,
@@ -595,11 +530,11 @@ local CustomColorSection = NameTab:Section({
 CustomColorSection:Colorpicker({
     Flag = "RainbowCustomColor",
     Title = "Цвет имени",
-    Default = State.rainbowCustomColor,
+    Default = Color3.fromRGB(255, 80, 80),
     Callback = function(color)
-        State.rainbowCustomColor = color
-        State.rainbowUseCustomColor = true
-        State.rainbowEnabled = false
+        Settings.RainbowCustomColor = color
+        Settings.RainbowUseCustomColor = true
+        Settings.RainbowEnabled = false
     end
 })
 
@@ -608,16 +543,15 @@ CustomColorSection:Space()
 CustomColorSection:Toggle({
     Flag = "RainbowUseCustomColor",
     Title = "Использовать кастомный цвет",
-    Value = State.rainbowUseCustomColor,
+    Value = false,
     Callback = function(value)
-        State.rainbowUseCustomColor = value
-        State.rainbowEnabled = false
+        Settings.RainbowUseCustomColor = value
+        Settings.RainbowEnabled = false
     end
 })
 
 NameTab:Space()
 
--- Rainbow Section
 local RainbowSection = NameTab:Section({
     Title = "Rainbow эффект",
     Box = true,
@@ -633,10 +567,10 @@ RainbowSection:Slider({
     Value = {
         Min = 0.1,
         Max = 5,
-        Default = State.rainbowSpeed,
+        Default = 1,
     },
     Callback = function(value)
-        State.rainbowSpeed = value
+        Settings.RainbowSpeed = value
     end
 })
 
@@ -646,10 +580,10 @@ RainbowSection:Toggle({
     Flag = "RainbowEnabled",
     Title = "Включить LGBT режим",
     Desc = "Радужное имя",
-    Value = State.rainbowEnabled,
+    Value = false,
     Callback = function(value)
-        State.rainbowEnabled = value
-        State.rainbowUseCustomColor = false
+        Settings.RainbowEnabled = value
+        Settings.RainbowUseCustomColor = false
     end
 })
 
@@ -672,10 +606,10 @@ AvatarTab:Input({
     Flag = "AvatarUsername",
     Title = "Username игрока",
     Icon = "lucide:user-search",
-    Value = State.avatarUsername,
+    Value = "",
     Placeholder = "Введи имя игрока...",
     Callback = function(value)
-        State.avatarUsername = value
+        Settings.AvatarUsername = value
     end
 })
 
@@ -687,7 +621,7 @@ AvatarTab:Button({
     Justify = "Center",
     Color = Color3.fromHex("#ECA201"),
     Callback = function()
-        if State.avatarUsername == "" then
+        if Settings.AvatarUsername == "" then
             WindUI:Notify({
                 Title = "Ошибка",
                 Content = "Введи имя игрока!",
@@ -696,14 +630,12 @@ AvatarTab:Button({
             return
         end
         
-        local target = findPlayerByName(State.avatarUsername)
+        local target = findPlayerByName(Settings.AvatarUsername)
         if target then
-            State.savedAvatarUsername = target.Name or State.avatarUsername
             morphToPlayer(target)
-            
             WindUI:Notify({
                 Title = "Скин применён!",
-                Content = "Скин игрока \"" .. (target.Name or State.avatarUsername) .. "\" установлен.",
+                Content = "Скин игрока \"" .. (target.Name or Settings.AvatarUsername) .. "\" установлен.",
                 Icon = "lucide:check",
             })
         else
@@ -722,9 +654,9 @@ AvatarTab:Toggle({
     Flag = "AvatarAutoApply",
     Title = "Auto Apply при респавне",
     Desc = "Автоматически применяет аватар после смерти",
-    Value = State.avatarAutoApply,
+    Value = false,
     Callback = function(value)
-        State.avatarAutoApply = value
+        Settings.AvatarAutoApply = value
     end
 })
 
@@ -747,10 +679,10 @@ UITab:Toggle({
     Flag = "HideIngameUI",
     Title = "Скрыть игровой UI",
     Desc = "Скрывает карту, меню и topbar",
-    Value = State.uiHidden,
+    Value = false,
     Callback = function(value)
-        State.uiHidden = value
-        toggleGameUI()
+        Settings.HideIngameUI = value
+        toggleGameUI(value)
     end
 })
 
@@ -760,10 +692,10 @@ UITab:Toggle({
     Flag = "HideKillfeed",
     Title = "Скрыть килфид",
     Desc = "Скрывает список убийств",
-    Value = State.killfeedHidden,
+    Value = false,
     Callback = function(value)
-        State.killfeedHidden = value
-        toggleKillfeed()
+        Settings.HideKillfeed = value
+        toggleKillfeed(value)
     end
 })
 
@@ -777,9 +709,9 @@ UITab:Toggle({
     Flag = "GlobalKillfeedEnabled",
     Title = "Показывать кастомный килфид",
     Desc = "Свой килфид справа сверху",
-    Value = State.globalKillfeedEnabled,
+    Value = true,
     Callback = function(value)
-        State.globalKillfeedEnabled = value
+        Settings.GlobalKillfeedEnabled = value
     end
 })
 
@@ -793,9 +725,9 @@ UITab:Toggle({
     Flag = "HPBarEnabled",
     Title = "Показывать HP Bar (CS:GO стиль)",
     Desc = "Показ здоровья слева снизу",
-    Value = State.hpBarEnabled,
+    Value = false,
     Callback = function(value)
-        State.hpBarEnabled = value
+        Settings.HPBarEnabled = value
     end
 })
 
@@ -804,9 +736,9 @@ UITab:Space()
 UITab:Colorpicker({
     Flag = "HPBarColor",
     Title = "Цвет HP Bar",
-    Default = State.hpBarColor,
+    Default = Color3.fromRGB(0, 255, 0),
     Callback = function(color)
-        State.hpBarColor = color
+        Settings.HPBarColor = color
     end
 })
 
@@ -820,13 +752,26 @@ UITab:Section({
 UITab:Keybind({
     Flag = "MenuKeybind",
     Title = "Клавиша открытия меню",
-    Value = State.menuKeybind,
-    Callback = function(value)
-        State.menuKeybind = value
-        Window:SetToggleKey(Enum.KeyCode[value])
+    Value = "Insert",
+})
+UITab:Space()
+
+UITab:Button({
+    Title = "Скрыть это меню",
+    Icon = "lucide:eye-off",
+    Justify = "Center",
+    Color = Color3.fromHex("#FF5050"),
+    Callback = function()
+        if Window.fullscreenToggle then
+            Window:ToggleWindow()
+        end
+        WindUI:Notify({
+            Title = "Меню скрыто",
+            Content = "Нажми Insert чтобы открыть",
+            Icon = "lucide:check",
+        })
     end
 })
-
 -- ════════════════════════════════════════════════════════════════
 -- ВКЛАДКА: MISC
 -- ════════════════════════════════════════════════════════════════
@@ -844,11 +789,11 @@ MiscTab:Toggle({
     Flag = "FreezeTime",
     Title = "Заморозить время",
     Desc = "Удерживает выбранное время суток",
-    Value = State.freezeTime,
+    Value = false,
     Callback = function(value)
-        State.freezeTime = value
+        Settings.FreezeTime = value
         if value then
-            Lighting.ClockTime = State.customTime
+            Lighting.ClockTime = Settings.CustomTime
         end
     end
 })
@@ -860,11 +805,11 @@ MiscTab:Slider({
     Value = {
         Min = 0,
         Max = 24,
-        Default = State.customTime,
+        Default = 12,
     },
     Callback = function(value)
-        State.customTime = value
-        if State.freezeTime then
+        Settings.CustomTime = value
+        if Settings.FreezeTime then
             Lighting.ClockTime = value
         end
     end
@@ -878,12 +823,11 @@ MiscTab:Section({
 
 MiscTab:Button({
     Title = "Fast Use",
-    Desc = "Позволяет активировать все кнопки без задержки. Не отключается",
+    Desc = "Позволяет активировать все кнопки без задержки",
     Icon = "lucide:zap",
     Justify = "Center",
     Color = Color3.fromHex("#FF8030"),
     Callback = function()
-        State.fastUseEnabled = true
         game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(prompt)
             prompt.HoldDuration = 0
         end)
@@ -902,9 +846,9 @@ MiscTab:Toggle({
     Flag = "HideParachuteEnabled",
     Title = "Спрятать парашют",
     Desc = "Скрывает парашют и рюкзак",
-    Value = State.hideParachuteEnabled,
+    Value = false,
     Callback = function(value)
-        State.hideParachuteEnabled = value
+        Settings.HideParachuteEnabled = value
     end
 })
 
@@ -925,9 +869,6 @@ ACSTab:Section({
 
 ACSTab:Space()
 
--- ════════════════════════════════════════════════════════════════
--- РАЗДЕЛ: ОРУЖИЕ
--- ════════════════════════════════════════════════════════════════
 ACSTab:Section({
     Title = "Оружие",
     TextSize = 16,
@@ -937,11 +878,8 @@ ACSTab:Input({
     Flag = "SpreadRecoilGun",
     Title = "Разброс + Отдача",
     Icon = "lucide:rifle",
-    Value = State.spreadRecoilGun,
+    Value = "M40 Sniper",
     Placeholder = "Напр. AWP, M40 Sniper...",
-    Callback = function(value)
-        State.spreadRecoilGun = value
-    end
 })
 
 ACSTab:Space()
@@ -952,60 +890,73 @@ ACSTab:Button({
     Justify = "Center",
     Color = Color3.fromHex("#10C550"),
     Callback = function()
-        if State.spreadRecoilGun == "" then
-            WindUI:Notify({
-                Title = "Ошибка",
-                Content = "Введи название оружия!",
-                Icon = "lucide:x",
-            })
+        local flags = Window.Flags
+        if not flags then
+            WindUI:Notify({Title = "Ошибка", Content = "Флаги не загружены", Icon = "lucide:x"})
             return
         end
         
-        pcall(function()
-            local gun = State.spreadRecoilGun
-            if game.Players.LocalPlayer.Backpack:FindFirstChild(gun) then
-                game.Players.LocalPlayer.Backpack[gun]:SetAttribute("HRecoil", Vector2.new(0, 0))
-                game.Players.LocalPlayer.Backpack[gun]:SetAttribute("VRecoil", Vector2.new(0, 0))
-                game.Players.LocalPlayer.Backpack[gun]:SetAttribute("MaxSpread", 0)
-                game.Players.LocalPlayer.Backpack[gun]:SetAttribute("MinSpread", 0)
-                game.Players.LocalPlayer.Backpack[gun]:SetAttribute("SwayBase", 0)
-                
+        local gun = flags.SpreadRecoilGun
+        if not gun or gun == "" then
+            gun = "M40 Sniper"
+        end
+        
+        task.wait(0.1)
+        
+        local backpack = player.Backpack
+        local gunInBackpack = backpack:FindFirstChild(gun)
+        local gunInHand = player.Character and player.Character:FindFirstChild(gun)
+        
+        if gunInBackpack then
+            pcall(function()
+                gunInBackpack:SetAttribute("HRecoil", Vector2.new(0, 0))
+                gunInBackpack:SetAttribute("VRecoil", Vector2.new(0, 0))
+                gunInBackpack:SetAttribute("MaxSpread", 0)
+                gunInBackpack:SetAttribute("MinSpread", 0)
+                gunInBackpack:SetAttribute("SwayBase", 0)
                 WindUI:Notify({
-                    Title = "Применено!",
-                    Content = "Параметры \"" .. gun .. "\" обнулены",
+                    Title = "✅ Применено!",
+                    Content = gun .. " - параметры обнулены",
                     Icon = "lucide:check",
                 })
-            else
+            end)
+        elseif gunInHand then
+            pcall(function()
+                gunInHand:SetAttribute("HRecoil", Vector2.new(0, 0))
+                gunInHand:SetAttribute("VRecoil", Vector2.new(0, 0))
+                gunInHand:SetAttribute("MaxSpread", 0)
+                gunInHand:SetAttribute("MinSpread", 0)
+                gunInHand:SetAttribute("SwayBase", 0)
                 WindUI:Notify({
-                    Title = "Ошибка",
-                    Content = "Оружие \"" .. gun .. "\" не найдено в инвентаре",
-                    Icon = "lucide:x",
+                    Title = "✅ Применено!",
+                    Content = gun .. " - параметры обнулены",
+                    Icon = "lucide:check",
                 })
-            end
-        end)
+            end)
+        else
+            WindUI:Notify({
+                Title = "❌ Ошибка",
+                Content = "Оружие " .. gun .. " не найдено в инвентаре!",
+                Icon = "lucide:x",
+            })
+        end
     end
 })
 
 ACSTab:Space()
 
--- ════════════════════════════════════════════════════════════════
--- РАЗДЕЛ: ПАТРОНЫ
--- ════════════════════════════════════════════════════════════════
 ACSTab:Section({
     Title = "Патроны",
     TextSize = 16,
 })
 
 ACSTab:Button({
-    Flag = "ACSAmmoPatch",
-    Title = State.acsAmmoPatchApplied and "✓ Патроны бесконечные" or "Бесконечные патроны",
-    Desc = "Устанавливает бесконечные пiтронi",
+    Title = "Бесконечные патроны",
+    Desc = "Устанавливает бесконечные патроны",
     Icon = "lucide:infinity",
     Justify = "Center",
-    Color = State.acsAmmoPatchApplied and Color3.fromHex("#10C550") or Color3.fromHex("#FF5050"),
+    Color = Color3.fromHex("#FF5050"),
     Callback = function()
-        if State.acsAmmoPatchApplied then return end
-        
         if not (ExecutorCapabilities.hookmetamethod and ExecutorCapabilities.newcclosure) then
             WindUI:Notify({
                 Title = "Возможно не поддерживается твоим инжектором",
@@ -1039,8 +990,6 @@ ACSTab:Button({
                 end
                 return oldIndex(self, index)
             end))
-            
-            State.acsAmmoPatchApplied = true
         end)
         
         if success then
@@ -1053,24 +1002,18 @@ ACSTab:Button({
 
 ACSTab:Space()
 
--- ════════════════════════════════════════════════════════════════
--- РАЗДЕЛ: АНИМАЦИИ
--- ════════════════════════════════════════════════════════════════
 ACSTab:Section({
     Title = "Анимации",
     TextSize = 16,
 })
 
 ACSTab:Button({
-    Flag = "ACSAnimPatch",
-    Title = State.acsAnimPatchApplied and "✓ Ускорение 0.5s" or "Ускорить доставание (0.5s)",
+    Title = "Ускорить доставание (0.5s)",
     Desc = "Скорость доставания оружия",
     Icon = "lucide:zap",
     Justify = "Center",
-    Color = State.acsAnimPatchApplied and Color3.fromHex("#10C550") or Color3.fromHex("#FF8030"),
+    Color = Color3.fromHex("#FF8030"),
     Callback = function()
-        if State.acsAnimPatchApplied then return end
-        
         if not ExecutorCapabilities.hookfunction then
             WindUI:Notify({
                 Title = "Возможно не поддерживается твоим инжектором",
@@ -1129,8 +1072,6 @@ ACSTab:Button({
                 
                 return result
             end)
-            
-            State.acsAnimPatchApplied = true
         end)
         
         if success then
@@ -1151,24 +1092,18 @@ ACSTab:Button({
 
 ACSTab:Space()
 
--- ════════════════════════════════════════════════════════════════
--- РАЗДЕЛ: СУПЕР ДРОБОВИК
--- ════════════════════════════════════════════════════════════════
 ACSTab:Section({
     Title = "Супер Дробовик",
     TextSize = 16,
 })
 
 ACSTab:Button({
-    Flag = "ACSshotgun",
-    Title = State.acsShotgunApplied and "✓ Супер Дробовик активен" or "Супер Дробовичек",
+    Title = "Супер Дробовичек",
     Desc = "Полностью модифицирует Remington 870",
     Icon = "lucide:zap",
     Justify = "Center",
-    Color = State.acsShotgunApplied and Color3.fromHex("#10C550") or Color3.fromHex("#FF5050"),
+    Color = Color3.fromHex("#FF5050"),
     Callback = function()
-        if State.acsShotgunApplied then return end
-        
         if not (ExecutorCapabilities.hookfunction and ExecutorCapabilities.hookmetamethod and ExecutorCapabilities.newcclosure) then
             WindUI:Notify({
                 Title = "Возможно не поддерживается твоим инжектором",
@@ -1181,7 +1116,6 @@ ACSTab:Button({
             local gunName = "Remington 870"
             local targetGuns = { [gunName] = true }
 
-            -- 1. БЕСКОНЕЧНЫЕ ПАТРОНЫ (Hooking)
             local oldIndex
             oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, index)
                 if not checkcaller() then
@@ -1198,7 +1132,6 @@ ACSTab:Button({
                 return oldIndex(self, index)
             end))
 
-            -- 2. ГЛОБАЛЬНАЯ МОДИФИКАЦИЯ КОНФИГОВ (Скорострельность и Скорость зарядки)
             task.spawn(function()
                 while task.wait(3) do
                     pcall(function()
@@ -1231,7 +1164,6 @@ ACSTab:Button({
                 end
             end)
 
-            -- 3. ПРИНУДИТЕЛЬНЫЙ ФИКС ОРУЖИЯ В РУКАХ
             task.spawn(function()
                 game:GetService("RunService").Heartbeat:Connect(function()
                     pcall(function()
@@ -1249,8 +1181,6 @@ ACSTab:Button({
                     end)
                 end)
             end)
-            
-            State.acsShotgunApplied = true
         end)
         
         if success then
@@ -1271,31 +1201,18 @@ ACSTab:Button({
 
 ACSTab:Space()
 
--- ════════════════════════════════════════════════════════════════
--- РАЗДЕЛ: ПЕРСОНАЖ
--- ════════════════════════════════════════════════════════════════
 ACSTab:Section({
     Title = "Персонаж",
     TextSize = 16,
 })
 
 ACSTab:Button({
-    Flag = "ACSMedPatch",
-    Title = State.acsMedPatchApplied and "✓ Медицина на ходу" or "Медицина на ходу",
+    Title = "Медицина на ходу",
     Desc = "Позволяет хилиться без остановки",
     Icon = "lucide:heart-pulse",
     Justify = "Center",
-    Color = State.acsMedPatchApplied and Color3.fromHex("#10C550") or Color3.fromHex("#FF5050"),
+    Color = Color3.fromHex("#FF5050"),
     Callback = function()
-        if State.acsMedPatchApplied then
-            WindUI:Notify({
-                Title = "Уже применено",
-                Content = "Патч медицины уже активен!",
-                Icon = "lucide:info",
-            })
-            return
-        end
-        
         if not (ExecutorCapabilities.getrawmetatable and ExecutorCapabilities.setreadonly) then
             WindUI:Notify({
                 Title = "Возможно не поддерживается твоим инжектором",
@@ -1332,8 +1249,6 @@ ACSTab:Button({
             
             if player.Character then patchCharacter(player.Character) end
             player.CharacterAdded:Connect(patchCharacter)
-            
-            State.acsMedPatchApplied = true
         end)
         
         if success then
@@ -1354,31 +1269,18 @@ ACSTab:Button({
 
 ACSTab:Space()
 
--- ════════════════════════════════════════════════════════════════
--- РАЗДЕЛ: ЗВУКИ
--- ══════════════════════════════════════���═════════════════════════
 ACSTab:Section({
     Title = "Звуки",
     TextSize = 16,
 })
 
 ACSTab:Button({
-    Flag = "ACSHitSound",
-    Title = State.acsHitSoundEnabled and "✓ HitSound активен" or "Включить HitSound",
+    Title = "Включить HitSound",
     Desc = "Замена звука попадания (/sound/hit.mp3)",
     Icon = "lucide:volume-2",
     Justify = "Center",
-    Color = State.acsHitSoundEnabled and Color3.fromHex("#10C550") or Color3.fromHex("#FF5050"),
+    Color = Color3.fromHex("#FF5050"),
     Callback = function()
-        if State.acsHitSoundEnabled then
-            WindUI:Notify({
-                Title = "Уже активен",
-                Content = "HitSound уже включен! Требуется перезагрузка для отключения",
-                Icon = "lucide:info",
-            })
-            return
-        end
-        
         if not ExecutorCapabilities.getcustomasset then
             WindUI:Notify({
                 Title = "Возможно не поддерживается твоим инжектором",
@@ -1441,7 +1343,6 @@ ACSTab:Button({
             end
             
             game.DescendantAdded:Connect(handleSound)
-            State.acsHitSoundEnabled = true
         end)
         
         if success then
@@ -1463,22 +1364,12 @@ ACSTab:Button({
 ACSTab:Space()
 
 ACSTab:Button({
-    Flag = "ACSKillSound",
-    Title = State.acsKillSoundEnabled and "✓ Kill Sound активен" or "Включить Kill Sound",
+    Title = "Включить Kill Sound",
     Desc = "Замена звука при убийстве (/sound/kill.mp3)",
     Icon = "lucide:volume-2",
     Justify = "Center",
-    Color = State.acsKillSoundEnabled and Color3.fromHex("#10C550") or Color3.fromHex("#FF5050"),
+    Color = Color3.fromHex("#FF5050"),
     Callback = function()
-        if State.acsKillSoundEnabled then
-            WindUI:Notify({
-                Title = "Уже активен",
-                Content = "Kill Sound уже включен!",
-                Icon = "lucide:info",
-            })
-            return
-        end
-        
         if not ExecutorCapabilities.getcustomasset then
             WindUI:Notify({
                 Title = "Возможно не поддерживается твоим инжектором",
@@ -1504,8 +1395,6 @@ ACSTab:Button({
 
             targetPath:GetPropertyChangedSignal("SoundId"):Connect(updateSound)
             updateSound()
-            
-            State.acsKillSoundEnabled = true
         end)
         
         if success then
@@ -1523,8 +1412,6 @@ ACSTab:Button({
         end
     end
 })
-
-
 -- ════════════════════════════════════════════════════════════════
 -- ВКЛАДКА: CONFIG
 -- ════════════════════════════════════════════════════════════════
@@ -1547,6 +1434,7 @@ local ConfigNameInput = ConfigTab:Input({
     Title = "Название конфига",
     Icon = "lucide:file-cog",
     Value = ConfigName,
+    Placeholder = "Введи название...",
     Callback = function(value)
         ConfigName = value
     end
@@ -1585,9 +1473,8 @@ ConfigButtonsGroup:Button({
                 Content = "Конфиг '" .. ConfigName .. "' успешно загружен",
                 Icon = "lucide:check",
             })
+            AllConfigsDropdown:Refresh(ConfigManager:AllConfigs())
         end
-        
-        AllConfigsDropdown:Refresh(ConfigManager:AllConfigs())
     end
 })
 
@@ -1606,9 +1493,8 @@ ConfigButtonsGroup:Button({
                 Content = "Конфиг '" .. ConfigName .. "' успешно сохранён",
                 Icon = "lucide:check",
             })
+            AllConfigsDropdown:Refresh(ConfigManager:AllConfigs())
         end
-        
-        AllConfigsDropdown:Refresh(ConfigManager:AllConfigs())
     end
 })
 
@@ -1618,6 +1504,7 @@ ConfigTab:Button({
     Title = "Создать новый конфиг",
     Icon = "lucide:file-plus",
     Justify = "Center",
+    Color = Color3.fromHex("#FF8030"),
     Callback = function()
         if ConfigName == "" then
             WindUI:Notify({
@@ -1638,25 +1525,22 @@ ConfigTab:Button({
         })
         
         AllConfigsDropdown:Refresh(ConfigManager:AllConfigs())
+        ConfigNameInput:Set("")
     end
 })
-
 -- ════════════════════════════════════════════════════════════════
 -- ОПТИМИЗИРОВАННЫЕ СИСТЕМНЫЕ ЦИКЛЫ
 -- ════════════════════════════════════════════════════════════════
 
 -- Управление временем
 addConnection("TimeControl", RunService.Heartbeat:Connect(function()
-    if not State._running or not State.freezeTime then return end
-    pcall(function()
-        Lighting.ClockTime = State.customTime
-    end)
+    if Settings.FreezeTime then
+        Lighting.ClockTime = Settings.CustomTime
+    end
 end))
 
 -- Rainbow эффект
 addConnection("RainbowLoop", RunService.RenderStepped:Connect(function()
-    if not State._running then return end
-    
     pcall(function()
         local char = player.Character
         if not char then return end
@@ -1670,18 +1554,18 @@ addConnection("RainbowLoop", RunService.RenderStepped:Connect(function()
         local usernameLabel = nameTag:FindFirstChild("Username")
         if not usernameLabel or not usernameLabel:IsA("TextLabel") then return end
         
-        if State.rainbowEnabled then
-            local hue = (tick() * State.rainbowSpeed * 50) % 360
+        if Settings.RainbowEnabled then
+            local hue = (tick() * Settings.RainbowSpeed * 50) % 360
             usernameLabel.TextColor3 = Color3.fromHSV(hue / 360, 1, 1)
-        elseif State.rainbowUseCustomColor then
-            usernameLabel.TextColor3 = State.rainbowCustomColor
+        elseif Settings.RainbowUseCustomColor then
+            usernameLabel.TextColor3 = Settings.RainbowCustomColor
         end
     end)
 end))
 
 -- Система скрытия парашюта
 addConnection("ParachuteHide", RunService.Heartbeat:Connect(function()
-    if not State._running or not State.hideParachuteEnabled then return end
+    if not Settings.HideParachuteEnabled then return end
     
     pcall(function()
         local targets = {
@@ -1695,9 +1579,6 @@ addConnection("ParachuteHide", RunService.Heartbeat:Connect(function()
             if targets[obj.Name] and obj:IsA("BasePart") then
                 obj.Transparency = 1
                 obj.LocalTransparencyModifier = 1
-                obj:GetPropertyChangedSignal("LocalTransparencyModifier"):Connect(function()
-                    obj.LocalTransparencyModifier = 1
-                end)
             end
         end
         
@@ -1709,13 +1590,12 @@ addConnection("ParachuteHide", RunService.Heartbeat:Connect(function()
         end
     end)
 end))
+
 -- HP Bar и Killfeed видимость
 addConnection("UIUpdate", RunService.RenderStepped:Connect(function()
-    if not State._running then return end
-    
     pcall(function()
-        HPBack.Visible = State.hpBarEnabled
-        KillfeedContainer.Visible = State.globalKillfeedEnabled
+        HPBack.Visible = Settings.HPBarEnabled
+        KillfeedContainer.Visible = Settings.GlobalKillfeedEnabled
         
         local char = player.Character
         local hum = char and char:FindFirstChild("Humanoid")
@@ -1723,21 +1603,19 @@ addConnection("UIUpdate", RunService.RenderStepped:Connect(function()
         if hum then
             local hp = math.floor(hum.Health)
             HPLabel.Text = tostring(hp)
-            HPLabel.TextColor3 = State.hpBarColor
-            HPIcon.TextColor3 = State.hpBarColor
+            HPLabel.TextColor3 = Settings.HPBarColor
+            HPIcon.TextColor3 = Settings.HPBarColor
         end
     end)
 end))
 
 -- Автоматическое скрытие UI
 task.spawn(function()
-    while State._running do
+    while true do
         pcall(function()
             task.wait(3)
             
-            if not State._running then return end
-            
-            if State.uiHidden then
+            if Settings.HideIngameUI then
                 local success, ui = pcall(function()
                     return player.PlayerGui:WaitForChild("UI", 1):WaitForChild("Container", 1):WaitForChild("HUD", 1)
                 end)
@@ -1753,7 +1631,7 @@ task.spawn(function()
                 end
             end
             
-            if State.killfeedHidden then
+            if Settings.HideKillfeed then
                 local success, killfeed = pcall(function()
                     return player.PlayerGui:WaitForChild("UI", 1):WaitForChild("Container", 1):WaitForChild("HUD", 1):WaitForChild("Killfeed", 1)
                 end)
@@ -1770,7 +1648,7 @@ end)
 -- СИСТЕМА KILLFEED
 -- ════════════════════════════════════════════════════════════════
 local function createKillEntry(killer, victim)
-    if not State.globalKillfeedEnabled or not State._running then return end
+    if not Settings.GlobalKillfeedEnabled then return end
     
     pcall(function()
         local isMyKill = (killer == player.DisplayName or killer == player.Name)
@@ -1815,8 +1693,8 @@ local function createKillEntry(killer, victim)
         text.Text = string.format("<b>%s</b> <font color='#888888'>></font> <b>%s</b>", killer, victim)
         text.Parent = entry
 
-        if isMyKill and State.chatEnabled then
-            safeSend(State.chatMessage)
+        if isMyKill and Settings.ChatEnabled then
+            safeSend(Settings.ChatMessage)
         end
 
         task.delay(5, function()
@@ -1851,8 +1729,6 @@ task.spawn(function()
     
     if success and gameKillfeed then
         addConnection("Killfeed Watch", gameKillfeed.ChildAdded:Connect(function(child)
-            if not State._running then return end
-            
             pcall(function()
                 local killerLabel = child:WaitForChild("Killer", 2)
                 local victimLabel = child:WaitForChild("Died", 2)
@@ -1875,15 +1751,15 @@ addConnection("CharacterAdded", player.CharacterAdded:Connect(function(char)
         
         task.wait(0.5)
         
-        if State.avatarAutoApply and State.savedAvatarUsername ~= "" then
-            local target = findPlayerByName(State.savedAvatarUsername)
+        if Settings.AvatarAutoApply and Settings.AvatarUsername ~= "" then
+            local target = findPlayerByName(Settings.AvatarUsername)
             if target then
                 morphToPlayer(target)
                 task.wait(0.2)
             end
         end
         
-        applyAllNameChanges()
+        applyAllNameChanges(Settings.GameDisplayName, Settings.GameUsername, Settings.GameRank)
     end)
 end))
 
@@ -1892,7 +1768,6 @@ end))
 -- ════════════════════════════════════════════════════════════════
 CoreGui.DescendantRemoving:Connect(function(obj)
     if obj == CustomUI then
-        State._running = false
         cleanupConnections()
     end
 end)
@@ -1902,7 +1777,7 @@ end)
 -- ════════════════════════════════════════════════════════════════
 WindUI:Notify({
     Title = "VeloHub 2.0 загружен!",
-    Content = "Скрипт успешно инициализирован. Нажми " .. State.menuKeybind .. " чтобы открыть меню",
+    Content = "Скрипт успешно инициализирован. Нажми Insert чтобы открыть меню",
     Icon = "lucide:check-circle",
     Duration = 5,
 })
